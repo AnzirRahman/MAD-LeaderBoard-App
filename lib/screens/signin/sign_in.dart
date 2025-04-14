@@ -106,7 +106,7 @@ class _SignInState extends ConsumerState<SignIn> {
                               children: [
                                 // Title
                                 const Text(
-                                  'Login',
+                                  'Student Login',
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -227,4 +227,4 @@ class _SignInState extends ConsumerState<SignIn> {
       error: (error, _) => Center(child: Text('Error: $error')),
     );
   }
-} 
+}
