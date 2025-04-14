@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:leaderboard_app/models/app_user.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// StreamProvider to monitor authentication state
 final authProvider = StreamProvider.autoDispose<Map<String, dynamic>?>((
   ref,
 ) async* {
@@ -11,26 +12,24 @@ final authProvider = StreamProvider.autoDispose<Map<String, dynamic>?>((
   ) async {
     if (user != null) {
       final doc =
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          await FirebaseFirestore.instance
+              .collection('user_profiles')
+              .doc(user.uid)
+              .get();
       final profileId =
           doc.exists && doc.data() != null
               ? doc.data()!['profileId'] as String?
               : null;
-      final role =
-          doc.exists && doc.data() != null
-              ? doc.data()!['role'] as String?
-              : 'student';
+
+      if (profileId == null || profileId.isEmpty) {
+      }
 
       return {
-        'user': AppUser(
-          uid: user.uid,
-          email: user.email!,
-          role: role ?? 'student',
-        ),
+        'user': AppUser(uid: user.uid, email: user.email!),
         'profileId':
             profileId?.isNotEmpty == true
                 ? profileId
-                : null,
+                : null, // Ensure profileId is valid
       };
     }
     return null;
@@ -45,7 +44,10 @@ final boundProfileProvider = FutureProvider.autoDispose<String?>((ref) async {
   if (user == null) return null;
 
   final doc =
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      await FirebaseFirestore.instance
+          .collection('user_profiles')
+          .doc(user.uid)
+          .get();
 
   return doc.exists && doc.data() != null
       ? doc.data()!['profileId'] as String?

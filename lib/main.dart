@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:leaderboard_app/screens/wrapper.dart';
 import 'package:leaderboard_app/screens/signin/sign_in.dart';
-import 'package:leaderboard_app/screens/faculty_dashboard.dart';
-import 'package:leaderboard_app/screens/admin_dashboard.dart';
-import 'package:leaderboard_app/screens/home/home.dart';
-import 'package:leaderboard_app/screens/leaderboard/leaderboard.dart';
-import 'package:leaderboard_app/screens/placement/placement.dart';
-import 'package:leaderboard_app/screens/profile/profile.dart';
+import 'package:leaderboard_app/screens/wrapper.dart'; // Wrapper screen
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:leaderboard_app/screens/drawer/faculty.dart'; // Import FacultyScreen
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const ProviderScope(child: MyApp()));
+  WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter binding is initialized for async operations
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ); // Initialize Firebase
+
+  runApp(
+    const ProviderScope(child: MyApp()),
+  ); // Use Riverpod's ProviderScope for state management
 }
 
 class MyApp extends StatelessWidget {
@@ -22,27 +24,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Leaderboard App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
       debugShowCheckedModeBanner: false, // Disable debug banner
-      initialRoute: '/wrapper',
+      title: 'LeaderBoard App', // App title
+      theme: ThemeData(primarySwatch: Colors.blue), // Set theme
+      initialRoute: Wrapper.routeName, // Initial route
       routes: {
-        '/wrapper': (context) => const Wrapper(),
-        '/signin': (context) => const SignIn(),
-        '/home': (context) => Home(
-          onCheckNow: () => Navigator.pushReplacementNamed(context, '/placement'),
-        ),
-        '/faculty': (context) => const FacultyDashboard(),
-        '/admin': (context) => const AdminDashboard(),
-        '/leaderboard': (context) => const Leaderboard(),
-        '/placement': (context) => const Placement(),
-        '/profile': (context) => const Profile(),
-      },
-      onUnknownRoute: (settings) {
-        print('Unknown route: ${settings.name}');
-        return MaterialPageRoute(builder: (context) => const Wrapper());
+        Wrapper.routeName: (context) => const Wrapper(), // Wrapper route
+        '/signin': (context) => const SignIn(), // Sign-in route
+        '/faculty': (context) => const FacultyScreen(), // Faculty route
       },
     );
   }

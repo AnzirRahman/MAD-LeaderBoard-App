@@ -165,55 +165,121 @@ class _PlacementState extends State<Placement> {
                   ),
                 if (_student != null)
                   Card(
-                    elevation: 4, // Added elevation for better appearance
+                    elevation:
+                        8, // Enhanced elevation for a more prominent look
                     margin: const EdgeInsets.symmetric(
                       vertical: 16.0,
-                    ), // Added margin
+                      horizontal: 12.0, // Increased horizontal margin
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        16,
+                      ), // More rounded corners
+                    ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(20.0), // Increased padding
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.person,
+                                size: 24, // Reduced icon size
+                                color: AppColors.secondaryAccentColor,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                "Student Details",
+                                style: const TextStyle(
+                                  fontSize: 18, // Reduced font size
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(
+                            thickness: 1.5,
+                            color: Colors.grey,
+                            height: 20, // Adjusted spacing around the divider
+                          ),
+                          const SizedBox(height: 8),
                           Text(
                             "Name: ${(_student!.doc.data() as Map<String, dynamic>)['locked'] == true ? 'Anonymous' : _student!.name}",
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(
+                              fontSize: 14, // Reduced font size
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
+                          const SizedBox(height: 6),
                           Text(
                             "Department: ${_student!.department}",
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(
+                              fontSize: 14,
+                            ), // Reduced font size
                           ),
+                          const SizedBox(height: 6),
                           Text(
                             "Batch: ${_student!.batch}",
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(
+                              fontSize: 14,
+                            ), // Reduced font size
                           ),
+                          const SizedBox(height: 6),
                           Text(
                             "Section: ${_student!.section}",
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(
+                              fontSize: 14,
+                            ), // Reduced font size
+                          ),
+                          const Divider(
+                            thickness: 1.0,
+                            color: Colors.grey,
+                            height: 20, // Adjusted spacing around the divider
                           ),
                           Text(
                             "Result: ${_student!.result}",
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(
+                              fontSize: 14,
+                            ), // Reduced font size
                           ),
+                          const SizedBox(height: 6),
                           Text(
                             "Achievement: ${_student!.achievement}",
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(
+                              fontSize: 14,
+                            ), // Reduced font size
                           ),
+                          const SizedBox(height: 6),
                           Text(
                             "Extracurricular: ${_student!.extracurricular}",
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(
+                              fontSize: 14,
+                            ), // Reduced font size
                           ),
+                          const SizedBox(height: 6),
                           Text(
                             "Co-Curriculum: ${_student!.coCurriculum}",
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(
+                              fontSize: 14,
+                            ), // Reduced font size
                           ),
-                          if (_rank != null)
+                          if (_rank != null) ...[
+                            const Divider(
+                              thickness: 1.0,
+                              color: Colors.grey,
+                              height: 20, // Adjusted spacing around the divider
+                            ),
                             Text(
                               "Rank: $_rank",
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 16, // Reduced font size
                                 fontWeight: FontWeight.bold,
+                                color: Colors.green,
                               ),
                             ),
+                          ],
                         ],
                       ),
                     ),
