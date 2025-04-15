@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:leaderboard_app/models/app_user.dart';
 import 'package:leaderboard_app/providers/auth_provider.dart';
+import 'package:leaderboard_app/screens/navbar.dart';
 import 'package:leaderboard_app/screens/signin/sign_in.dart';
 import 'package:leaderboard_app/screens/faculty_dashboard.dart';
 import 'package:leaderboard_app/screens/admin_dashboard.dart';
@@ -11,7 +12,6 @@ import 'package:leaderboard_app/screens/placement/placement.dart';
 import 'package:leaderboard_app/screens/leaderboard/leaderboard.dart';
 import 'package:leaderboard_app/screens/profile/profile.dart';
 import 'package:leaderboard_app/screens/appbar.dart';
-import 'package:leaderboard_app/screens/navbar.dart';
 import 'package:leaderboard_app/screens/drawer/drawer.dart';
 
 class Wrapper extends ConsumerStatefulWidget {
@@ -43,23 +43,19 @@ class _WrapperState extends ConsumerState<Wrapper> {
     });
   }
 
-  void navigateTo(NavBarItem item) {
+  void navigateTo(NavBarItem item, Map<String, dynamic>? authData) {
     if (_currentItem != item) {
       setState(() => _currentItem = item);
     }
   }
 
-  Map<NavBarItem, Widget> _buildScreens() {
+  Map<NavBarItem, Widget> _buildScreens(Map<String, dynamic>? authData) {
+    final user = authData?['user'] as AppUser?;
     return {
-      NavBarItem.home: Home(
-        onCheckNow: () {
-          print('Wrapper: Home onCheckNow, navigating to placement');
-          navigateTo(NavBarItem.placement);
-        },
-      ),
+      NavBarItem.home: const Home(),
       NavBarItem.placement: const Placement(),
       NavBarItem.leaderboard: const Leaderboard(),
-      NavBarItem.profile: const Profile(),
+      NavBarItem.profile: user == null ? const SignIn() : const Profile(),
     };
   }
 
@@ -70,81 +66,122 @@ class _WrapperState extends ConsumerState<Wrapper> {
     return authState.when(
       data: (authData) {
         print('Wrapper: Auth data: $authData');
-        if (authData == null || authData['user'] == null) {
-          print('Wrapper: No user data, redirecting to SignIn');
-          return const SignIn();
+        final user = authData?['user'] as AppUser?;
+        final currentRoute = ModalRoute.of(context)?.settings.name;
+
+        // Role-based redirection for authenticated users
+        if (user != null) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final allowMainMenu = args is Map && args['allowMainMenu'] == true;
+
+          if (user.role == 'faculty' && currentRoute != '/faculty' && !allowMainMenu) {
+            print('Wrapper: Navigating to FacultyDashboard');
+            return const FacultyDashboard();
+          } else if (user.role == 'admin' && currentRoute != '/admin' && !allowMainMenu) {
+            print('Wrapper: Navigating to AdminDashboard');
+            return const AdminDashboard();
+          }
         }
 
-        final user = authData['user'] as AppUser;
-        print('Wrapper: User role: ${user.role}');
-        final args = ModalRoute.of(context)?.settings.arguments;
-        final allowMainMenu = args is Map && args['allowMainMenu'] == true;
-
-        // Allow main menu for admins/faculty if flagged
-        if (allowMainMenu) {
-          print('Wrapper: Allowing main menu for role ${user.role}');
-          return Scaffold(
-            backgroundColor: AppColors.primaryBgColor,
-            appBar: const CustomAppBar(),
-            drawer: const CustomDrawer(),
-            body: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/bg-pattern.png'),
-                  fit: BoxFit.none,
-                  repeat: ImageRepeat.repeat,
-                  opacity: 0.2,
-                  scale: 3.0,
-                ),
+        // Show screens with app bar, drawer, and bottom navigation bar
+        return Scaffold(
+          backgroundColor: AppColors.primaryBgColor,
+          appBar: const CustomAppBar(),
+          drawer: const CustomDrawer(),
+          body: _buildScreens(authData)[_currentItem],
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: NavBarItem.values.indexOf(_currentItem),
+            onTap: (index) => navigateTo(NavBarItem.values[index], authData),
+            selectedItemColor: AppColors.secondaryAccentColor,
+            unselectedItemColor: Colors.grey,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Home',
               ),
-              child: _buildScreens()[_currentItem],
-            ),
-            bottomNavigationBar: CustomBottomNavBar(
-              currentItem: _currentItem,
-              onTap: navigateTo,
-            ),
-          );
-        }
-
-        // Role-based dashboard redirection
-        if (user.role == 'faculty' && ModalRoute.of(context)?.settings.name != '/faculty') {
-          print('Wrapper: Navigating to FacultyDashboard');
-          return const FacultyDashboard();
-        } else if (user.role == 'admin' && ModalRoute.of(context)?.settings.name != '/admin') {
-          print('Wrapper: Navigating to AdminDashboard');
-          return const AdminDashboard();
-        } else {
-          print('Wrapper: Navigating to student screens');
-          return Scaffold(
-            backgroundColor: AppColors.primaryBgColor,
-            appBar: const CustomAppBar(),
-            drawer: const CustomDrawer(),
-            body: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/bg-pattern.png'),
-                  fit: BoxFit.none,
-                  repeat: ImageRepeat.repeat,
-                  opacity: 0.2,
-                  scale: 3.0,
-                ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.work),
+                label: 'Placement',
               ),
-              child: _buildScreens()[_currentItem],
-            ),
-            bottomNavigationBar: CustomBottomNavBar(
-              currentItem: _currentItem,
-              onTap: navigateTo,
-            ),
-          );
-        }
+              BottomNavigationBarItem(
+                icon: Icon(Icons.leaderboard),
+                label: 'Leaderboard',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+            ],
+          ),
+        );
       },
       loading: () {
         print('Wrapper: Auth state loading');
-        return const Center(child: CircularProgressIndicator());
+        // Show Home with app bar, drawer, and bottom navigation bar while loading
+        return Scaffold(
+          backgroundColor: AppColors.primaryBgColor,
+          appBar: const CustomAppBar(),
+          drawer: const CustomDrawer(),
+          body: const Home(),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: NavBarItem.values.indexOf(_currentItem),
+            onTap: (index) => navigateTo(NavBarItem.values[index], null),
+            selectedItemColor: AppColors.secondaryAccentColor,
+            unselectedItemColor: Colors.grey,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.work),
+                label: 'Placement',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.leaderboard),
+                label: 'Leaderboard',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+            ],
+          ),
+        );
       },
       error: (error, _) {
         print('Wrapper: Auth error: $error');
-        return Center(child: Text('Error: $error'));
+        // Show Home with app bar, drawer, and bottom navigation bar on error
+        return Scaffold(
+          backgroundColor: AppColors.primaryBgColor,
+          appBar: const CustomAppBar(),
+          drawer: const CustomDrawer(),
+          body: const Home(),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: NavBarItem.values.indexOf(_currentItem),
+            onTap: (index) => navigateTo(NavBarItem.values[index], null),
+            selectedItemColor: AppColors.secondaryAccentColor,
+            unselectedItemColor: Colors.grey,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.work),
+                label: 'Placement',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.leaderboard),
+                label: 'Leaderboard',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+            ],
+          ),
+        );
       },
     );
   }

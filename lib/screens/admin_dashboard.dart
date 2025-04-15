@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:leaderboard_app/models/students.dart' hide StudentService; // Hide conflicting StudentService
+import 'package:leaderboard_app/models/students.dart' hide StudentService;
 import 'package:leaderboard_app/models/app_user.dart';
 import 'package:leaderboard_app/providers/auth_provider.dart';
 import 'package:leaderboard_app/services/auth_service.dart';
-import 'package:leaderboard_app/services/student_service.dart'; // Import the correct StudentService
+import 'package:leaderboard_app/services/student_service.dart';
 import 'package:leaderboard_app/shared/colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:leaderboard_app/screens/navbar.dart'; // Import NavBarItem
+import 'package:leaderboard_app/screens/navbar.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -22,12 +22,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   Student? _selectedStudent;
   String? _errorMessage;
   bool _isLoading = false;
+  bool _isUpdating = false;
+  bool _isAdding = false;
 
   final TextEditingController _achievementController = TextEditingController();
   final TextEditingController _coCurriculumController = TextEditingController();
   final TextEditingController _extracurricularController = TextEditingController();
 
-  // Controllers for the add student form
   final TextEditingController _studentIdController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
@@ -37,6 +38,20 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   final TextEditingController _newAchievementController = TextEditingController();
   final TextEditingController _newExtracurricularController = TextEditingController();
   final TextEditingController _newCoCurriculumController = TextEditingController();
+
+  // New state for toggling UI
+  String _activeSection = 'search'; // 'search' or 'add'
+
+  late final Future<DocumentSnapshot> _profileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileFuture = FirebaseFirestore.instance
+        .collection('users')
+        .doc(ref.read(authProvider).value?['user']?.uid)
+        .get();
+  }
 
   @override
   void dispose() {
@@ -92,25 +107,29 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     if (_selectedStudent == null) return;
 
     setState(() {
-      _isLoading = true;
+      _isUpdating = true;
       _errorMessage = null;
     });
 
     try {
+      final updatedAchievement = int.tryParse(_achievementController.text) ?? 0;
+      final updatedCoCurriculum = _coCurriculumController.text;
+      final updatedExtracurricular = _extracurricularController.text;
+
       await FirebaseFirestore.instance
           .collection('students')
           .doc(_selectedStudent!.id)
           .update({
-        'Achievement': int.tryParse(_achievementController.text) ?? 0,
-        'Co-curriculum': _coCurriculumController.text,
-        'Extracurricular': _extracurricularController.text,
+        'Achievement': updatedAchievement,
+        'Co-curriculum': updatedCoCurriculum,
+        'Extracurricular': updatedExtracurricular,
       });
 
       setState(() {
         _selectedStudent = _selectedStudent!.copyWith(
-          achievement: int.tryParse(_achievementController.text) ?? 0,
-          coCurriculum: _coCurriculumController.text,
-          extracurricular: _extracurricularController.text,
+          achievement: updatedAchievement,
+          coCurriculum: updatedCoCurriculum,
+          extracurricular: updatedExtracurricular,
         );
       });
 
@@ -123,14 +142,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       });
     } finally {
       setState(() {
-        _isLoading = false;
+        _isUpdating = false;
       });
     }
   }
 
   Future<void> _addStudent() async {
     setState(() {
-      _isLoading = true;
+      _isAdding = true;
       _errorMessage = null;
     });
 
@@ -145,7 +164,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       final extracurricular = _newExtracurricularController.text.trim();
       final coCurriculum = _newCoCurriculumController.text.trim();
 
-      // Enhanced validation
       if (id.isEmpty) {
         throw Exception('Student ID is required');
       }
@@ -165,7 +183,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         throw Exception('Please enter a valid result (e.g., 3.5)');
       }
 
-      print('Adding student with ID: $id'); // Debug log
+      print('Adding student with ID: $id');
       await StudentService().addStudent(
         id: id,
         name: name,
@@ -178,22 +196,23 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         coCurriculum: coCurriculum.isEmpty ? 'No' : coCurriculum,
       );
 
-      // Clear the form
-      _studentIdController.clear();
-      _nameController.clear();
-      _departmentController.clear();
-      _batchController.clear();
-      _sectionController.clear();
-      _resultController.clear();
-      _newAchievementController.clear();
-      _newExtracurricularController.clear();
-      _newCoCurriculumController.clear();
+      setState(() {
+        _studentIdController.clear();
+        _nameController.clear();
+        _departmentController.clear();
+        _batchController.clear();
+        _sectionController.clear();
+        _resultController.clear();
+        _newAchievementController.clear();
+        _newExtracurricularController.clear();
+        _newCoCurriculumController.clear();
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Student added successfully')),
       );
     } catch (e) {
-      print('Add student error: $e'); // Debug log
+      print('Add student error: $e');
       String errorMessage;
       if (e.toString().contains('already exists')) {
         errorMessage = 'Student ID already exists. Please use a unique ID.';
@@ -209,7 +228,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       });
     } finally {
       setState(() {
-        _isLoading = false;
+        _isAdding = false;
       });
     }
   }
@@ -236,10 +255,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         }
 
         return FutureBuilder<DocumentSnapshot>(
-          future: FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get(),
+          future: _profileFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -263,7 +279,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 backgroundColor: AppColors.secondaryAccentColor,
                 title: const Text('Admin Dashboard'),
                 automaticallyImplyLeading: false,
-                leading: IconButton(
+                /* leading: IconButton(
                   icon: const Icon(Icons.arrow_back),
                   onPressed: () {
                     try {
@@ -282,13 +298,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   },
                   tooltip: 'Back to Home Page',
                 ),
+                */
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.logout),
                     onPressed: () async {
                       print('AdminDashboard: Logout button pressed');
                       await AuthService.signOut();
-                      Navigator.pushReplacementNamed(context, '/signin');
+                      Navigator.pushReplacementNamed(context, '/NavBarItem.home');
                     },
                     tooltip: 'Sign Out',
                   ),
@@ -354,52 +371,210 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    'Search Student',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: 'Enter Student ID',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: () {
-                          if (_searchController.text.isNotEmpty) {
-                            _searchStudent(_searchController.text.trim());
-                          }
-                        },
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _activeSection == 'search'
+                                ? AppColors.secondaryAccentColor
+                                : Colors.grey[300],
+                            foregroundColor: _activeSection == 'search'
+                                ? AppColors.primaryBgColor
+                                : Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _activeSection = 'search';
+                              _errorMessage = null; // Clear errors when switching
+                            });
+                          },
+                          child: const Text(
+                            'Search Student',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (_isLoading)
-                    const Center(child: CircularProgressIndicator()),
-                  if (_errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: Colors.red),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _activeSection == 'add'
+                                ? AppColors.secondaryAccentColor
+                                : Colors.grey[300],
+                            foregroundColor: _activeSection == 'add'
+                                ? AppColors.primaryBgColor
+                                : Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _activeSection = 'add';
+                              _errorMessage = null; // Clear errors when switching
+                            });
+                          },
+                          child: const Text(
+                            'Add New Student',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
                       ),
-                    ),
-                  if (_selectedStudent != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'Editing: ${_selectedStudent!.name}',
-                      style: const TextStyle(
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  if (_activeSection == 'search') ...[
+                    const Text(
+                      'Search Student',
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: 'Enter Student ID',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.search),
+                          onPressed: () {
+                            if (_searchController.text.isNotEmpty) {
+                              _searchStudent(_searchController.text.trim());
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_isLoading)
+                      const Center(child: CircularProgressIndicator()),
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    if (_selectedStudent != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        'Editing: ${_selectedStudent!.name}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _achievementController,
+                        decoration: const InputDecoration(
+                          labelText: 'Achievements (Number)',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _coCurriculumController,
+                        decoration: const InputDecoration(
+                          labelText: 'Co-Curricular Activities',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _extracurricularController,
+                        decoration: const InputDecoration(
+                          labelText: 'Extracurricular Activities',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondaryAccentColor,
+                          foregroundColor: AppColors.primaryBgColor,
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                        onPressed: _isUpdating ? null : _updateStudent,
+                        child: _isUpdating
+                            ? const CircularProgressIndicator(
+                                color: AppColors.primaryBgColor,
+                              )
+                            : const Text('Save Changes'),
+                      ),
+                    ],
+                  ],
+                  if (_activeSection == 'add') ...[
+                    const Text(
+                      'Add New Student',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _studentIdController,
+                      decoration: const InputDecoration(
+                        labelText: 'Student ID',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _achievementController,
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _departmentController,
+                      decoration: const InputDecoration(
+                        labelText: 'Department',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _batchController,
+                      decoration: const InputDecoration(
+                        labelText: 'Batch (e.g., 2023)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _sectionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Section (e.g., A)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _resultController,
+                      decoration: const InputDecoration(
+                        labelText: 'Result (e.g., 3.5)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _newAchievementController,
                       decoration: const InputDecoration(
                         labelText: 'Achievements (Number)',
                         border: OutlineInputBorder(),
@@ -408,17 +583,17 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _coCurriculumController,
+                      controller: _newExtracurricularController,
                       decoration: const InputDecoration(
-                        labelText: 'Co-Curricular Activities',
+                        labelText: 'Extracurricular Activities (Optional)',
                         border: OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _extracurricularController,
+                      controller: _newCoCurriculumController,
                       decoration: const InputDecoration(
-                        labelText: 'Extracurricular Activities',
+                        labelText: 'Co-Curricular Activities (Optional)',
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -429,103 +604,22 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         foregroundColor: AppColors.primaryBgColor,
                         minimumSize: const Size(double.infinity, 48),
                       ),
-                      onPressed: _updateStudent,
-                      child: const Text('Save Changes'),
+                      onPressed: _isAdding ? null : _addStudent,
+                      child: _isAdding
+                          ? const CircularProgressIndicator(
+                              color: AppColors.primaryBgColor,
+                            )
+                          : const Text('Add Student'),
                     ),
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
                   ],
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Add New Student',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _studentIdController,
-                    decoration: const InputDecoration(
-                      labelText: 'Student ID',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Name',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _departmentController,
-                    decoration: const InputDecoration(
-                      labelText: 'Department',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _batchController,
-                    decoration: const InputDecoration(
-                      labelText: 'Batch (e.g., 2023)',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _sectionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Section (e.g., A)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _resultController,
-                    decoration: const InputDecoration(
-                      labelText: 'Result (e.g., 3.5)',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _newAchievementController,
-                    decoration: const InputDecoration(
-                      labelText: 'Achievements (Number)',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _newExtracurricularController,
-                    decoration: const InputDecoration(
-                      labelText: 'Extracurricular Activities (Optional)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _newCoCurriculumController,
-                    decoration: const InputDecoration(
-                      labelText: 'Co-Curricular Activities (Optional)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondaryAccentColor,
-                      foregroundColor: AppColors.primaryBgColor,
-                      minimumSize: const Size(double.infinity, 48),
-                    ),
-                    onPressed: _addStudent,
-                    child: const Text('Add Student'),
-                  ),
                 ],
               ),
             );

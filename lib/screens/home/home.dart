@@ -1,44 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:leaderboard_app/models/app_user.dart';
+import 'package:leaderboard_app/screens/navbar.dart';
 import 'package:leaderboard_app/shared/colors.dart';
-import 'package:leaderboard_app/screens/signin/sign_in.dart';
 import 'package:leaderboard_app/shared/styled_button.dart';
 import 'package:leaderboard_app/providers/auth_provider.dart';
+import 'package:leaderboard_app/screens/wrapper.dart'; // Import Wrapper to access NavBarItem
 
 class Home extends ConsumerWidget {
-  final VoidCallback onCheckNow;
-
-  const Home({super.key, required this.onCheckNow});
+  const Home({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.primaryBgColor,
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/bg-pattern.png'),
-            fit: BoxFit.none,
-            repeat: ImageRepeat.repeat,
-            opacity: 0.2,
-            scale: 3.0,
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/bg-pattern.png'),
+          fit: BoxFit.none,
+          repeat: ImageRepeat.repeat,
+          opacity: 0.2,
+          scale: 3.0,
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _buildWelcomeText(),
-                const SizedBox(height: 100),
-                _buildActionButtons(context, authState),
-              ],
-            ),
+      ),
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildWelcomeText(),
+              const SizedBox(height: 100),
+              _buildActionButtons(context, authState),
+            ],
           ),
         ),
       ),
@@ -80,21 +76,26 @@ class Home extends ConsumerWidget {
           text: 'Check Now',
           backgroundColor: AppColors.secondaryAccentColor,
           foregroundColor: AppColors.primaryBgColor,
-          onPressed: onCheckNow,
+          onPressed: () {
+            // Navigate to Placement within Wrapper's scaffold
+            Navigator.pushNamed(
+              context,
+              '/wrapper',
+              arguments: NavBarItem.placement,
+            );
+          },
         ),
-        const SizedBox(width: 10),
-        if (user == null)
+        if (user == null) ...[
+          const SizedBox(width: 10),
           _buildStyledButton(
             text: 'Login',
             backgroundColor: AppColors.primaryBgColor,
             foregroundColor: AppColors.secondaryAccentColor,
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SignIn()),
-              );
+              Navigator.pushNamed(context, '/signin');
             },
           ),
+        ],
       ],
     );
   }

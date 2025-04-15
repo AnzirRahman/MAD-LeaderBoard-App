@@ -26,14 +26,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      debugShowCheckedModeBanner: false, // Disable debug banner
+      debugShowCheckedModeBanner: false,
       initialRoute: '/wrapper',
       routes: {
         '/wrapper': (context) => const Wrapper(),
         '/signin': (context) => const SignIn(),
-        '/home': (context) => Home(
-          onCheckNow: () => Navigator.pushReplacementNamed(context, '/placement'),
-        ),
+        '/home': (context) => const Home(),
         '/faculty': (context) => const FacultyDashboard(),
         '/admin': (context) => const AdminDashboard(),
         '/leaderboard': (context) => const Leaderboard(),
@@ -42,7 +40,9 @@ class MyApp extends StatelessWidget {
       },
       onUnknownRoute: (settings) {
         print('Unknown route: ${settings.name}');
-        return MaterialPageRoute(builder: (context) => const Wrapper());
+        return MaterialPageRoute(
+          builder: (context) => const Wrapper(),
+        );
       },
     );
   }
